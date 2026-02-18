@@ -1,0 +1,32 @@
+
+using Random
+
+
+function compute_popularity(behaviors::DataFrame)::Dict{String,Int}
+    click_counts = Dict{String,Int}()
+
+    for row in eachrow(behaviors)
+        for nid in parse_history(row.History)
+            click_counts[nid] = get(click_counts, nid, 0) + 1
+        end
+        for (nid, clicked) in parse_impressions(row.Impressions)
+            if clicked == 1
+                click_counts[nid] = get(click_counts, nid, 0) + 1
+            end
+        end
+    end
+
+    return click_counts
+end
+
+function score_popularity(user_id::String, candidates::Vector{String},
+                          history::Vector{String},
+                          popularity::Dict{String,Int})::Dict{String,Float64}
+    return Dict(nid => Float64(get(popularity, nid, 0)) for nid in candidates)
+end
+
+
+function score_random(user_id::String, candidates::Vector{String},
+                      history::Vector{String})::Dict{String,Float64}
+    return Dict(nid => rand() for nid in candidates)
+end
