@@ -8,6 +8,7 @@ function load_news(path::String)::DataFrame
         delim='\t', header=false, missingstring="", strict=false)
     rename!(news, [:NewsID, :Category, :SubCategory, :Title,
                    :Abstract, :URL, :TitleEntities, :AbstractEntities])
+    sanitize!(news)
     return news
 end
 
@@ -15,16 +16,34 @@ function load_behaviors(path::String)::DataFrame
     behaviors = CSV.read(path, DataFrame;
         delim='\t', header=false, missingstring="", strict=false)
     rename!(behaviors, [:ImpressionID, :UserID, :Time, :History, :Impressions])
+    sanitize!(behaviors)
     return behaviors
 end
 
 
-function parse_history(s::Union{String, Missing})::Vector{String}
+function sanitize!(df::DataFrame)::DataFrame
+    for col in propertynames(df)
+        v = df[!, col]
+        eltype(v) <: Union{AbstractString,Missing} || continue
+        new_v = Vector{Union{String,Missing}}(missing, length(v))
+        for i in eachindex(v)
+            if isassigned(v, i)
+                val = v[i]
+                ismissing(val) || (new_v[i] = String(val))
+            end
+        end
+        df[!, col] = new_v
+    end
+    return df
+end
+
+
+function parse_history(s::Union{AbstractString, Missing})::Vector{String}
     ismissing(s) && return String[]
     return String.(split(s))
 end
 
-function parse_impressions(s::Union{String, Missing})::Vector{Tuple{String,Int}}
+function parse_impressions(s::Union{AbstractString, Missing})::Vector{Tuple{String,Int}}
     ismissing(s) && return Tuple{String,Int}[]
     result = Tuple{String,Int}[]
     for item in split(s)

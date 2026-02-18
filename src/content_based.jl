@@ -1,6 +1,6 @@
 
 
-function tokenize(text::Union{String,Missing})::Vector{String}
+function tokenize(text::Union{AbstractString,Missing})::Vector{String}
     ismissing(text) && return String[]
     cleaned = replace(lowercase(text), r"[^a-z0-9\s]" => " ")
     return filter(!isempty, String.(split(cleaned)))

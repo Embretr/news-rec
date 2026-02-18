@@ -7,7 +7,6 @@ using Random
 
 const SRC = @__DIR__
 include(joinpath(SRC, "preprocessing.jl"))
-include(joinpath(SRC, "analysis.jl"))
 include(joinpath(SRC, "baseline.jl"))
 include(joinpath(SRC, "collaborative_filtering.jl"))
 include(joinpath(SRC, "content_based.jl"))
@@ -28,9 +27,6 @@ println("\n=== Loading dev/validation data ===")
 dev_news, dev_behaviors = load_mind(DEV_DIR)
 println("  news rows      : ", nrow(dev_news))
 println("  behavior rows  : ", nrow(dev_behaviors))
-
-println()
-analyze_dataset(train_news, train_behaviors)
 
 println("\n=== Building models ===")
 
