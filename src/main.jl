@@ -12,6 +12,10 @@ include(joinpath(SRC, "collaborative_filtering.jl"))
 include(joinpath(SRC, "content_based.jl"))
 include(joinpath(SRC, "hybrid.jl"))
 
+#evaluation metrics
+include(joinpath(SRC, "accuracy_metric.jl"))
+include(joinpath(SRC, "beyond_accuracy.jl"))
+
 Random.seed!(42)
 
 const ROOT      = joinpath(@__DIR__, "..")
@@ -67,3 +71,13 @@ for (name, scores) in [("Popularity", pop_scores), ("User-CF", cf_scores),
 end
 
 println("\nDone.")
+
+#evaluation
+println("\n=== Evaluating Hybrid (AUC) ===")
+
+hybrid_auc = evaluate_auc(dev_behaviors,
+    (uid, cand, hist) -> score_hybrid(uid, cand, hist,
+                                       popularity, cf_rec, news_tfidf)
+)
+
+println("Hybrid AUC = ", hybrid_auc)
