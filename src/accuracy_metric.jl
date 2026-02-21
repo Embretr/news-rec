@@ -26,15 +26,32 @@ function auc(scores::Vector{Float64}, labels::Vector{Int})::Float64
     return count / total
 end
 
+"""
+Compute MRR for a single impression.
+Assumes at least one positive item.
+"""
+function mrr(scores::Vector{Float64}, labels::Vector{Int})::Float64
+    # sort indices by score (descending)
+    order = sortperm(scores, rev=true)
 
-"""
-Evaluate AUC over all impressions for a given scoring function.
-score_fn must return Dict{NewsID => score}
-"""
-function evaluate_auc(behaviors::DataFrame, score_fn)
+    for (rank, idx) in enumerate(order)
+        if labels[idx] == 1
+            return 1.0 / rank
+        end
+    end
+
+    return 0.0
+end
+
+
+function evaluate_accuracy(behaviors::DataFrame, score_fn; max_rows=1000)
+
     auc_list = Float64[]
+    mrr_list = Float64[]
 
-    for row in eachrow(first(behaviors, 1000))
+    count = 0
+
+    for row in eachrow(first(behaviors, max_rows))
 
         impressions = parse_impressions(row.Impressions)
         isempty(impressions) && continue
@@ -49,7 +66,11 @@ function evaluate_auc(behaviors::DataFrame, score_fn)
         scores = [get(scores_dict, nid, 0.0) for nid in candidates]
 
         push!(auc_list, auc(scores, labels))
+        push!(mrr_list, mrr(scores, labels))
+
+        count += 1
+        count % 200 == 0 && println("Processed ", count)
     end
 
-    return mean(auc_list)
+    return mean(auc_list), mean(mrr_list)
 end
