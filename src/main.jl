@@ -75,12 +75,13 @@ println("\nDone.")
 #evaluation
 println("\n=== Evaluating Hybrid (Accuracy) ===")
 
-hybrid_auc, hybrid_mrr = evaluate_accuracy(
+hybrid_auc, hybrid_mrr, hybrid_ndcg = evaluate_accuracy(
     dev_behaviors,
     (uid, cand, hist) -> score_hybrid(uid, cand, hist,
                                        popularity, cf_rec, news_tfidf);
     max_rows=1000
 )
 
-println("Hybrid AUC = ", hybrid_auc)
-println("Hybrid MRR = ", hybrid_mrr)
+println("Hybrid AUC  = ", hybrid_auc)
+println("Hybrid MRR  = ", hybrid_mrr)
+println("Hybrid nDCG = ", hybrid_ndcg)

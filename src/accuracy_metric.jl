@@ -43,11 +43,32 @@ function mrr(scores::Vector{Float64}, labels::Vector{Int})::Float64
     return 0.0
 end
 
+"""
+Compute nDCG@k for a single impression (binary relevance).
+"""
+function ndcg(scores::Vector{Float64}, labels::Vector{Int}; k::Int=10)::Float64
+    # sort indices by predicted score (descending)
+    order = sortperm(scores, rev=true)
+
+    dcg = 0.0
+    for i in 1:min(k, length(order))
+        idx = order[i]
+        if labels[idx] == 1
+            dcg += 1 / log2(i + 1)
+        end
+    end
+
+    # Ideal DCG (one positive item)
+    idcg = 1 / log2(1 + 1)
+
+    return dcg / idcg
+end
 
 function evaluate_accuracy(behaviors::DataFrame, score_fn; max_rows=1000)
 
     auc_list = Float64[]
     mrr_list = Float64[]
+    ndcg_list = Float64[]
 
     count = 0
 
@@ -67,10 +88,11 @@ function evaluate_accuracy(behaviors::DataFrame, score_fn; max_rows=1000)
 
         push!(auc_list, auc(scores, labels))
         push!(mrr_list, mrr(scores, labels))
+        push!(ndcg_list, ndcg(scores, labels))
 
         count += 1
         count % 200 == 0 && println("Processed ", count)
     end
 
-    return mean(auc_list), mean(mrr_list)
+    return mean(auc_list), mean(mrr_list), mean(ndcg_list)
 end
