@@ -91,7 +91,7 @@ function evaluate_accuracy(behaviors::DataFrame, score_fn; max_rows=1000)
         push!(ndcg_list, ndcg(scores, labels))
 
         count += 1
-        count % 200 == 0 && println("Processed ", count)
+        # count % 200 == 0 && println("Processed ", count)
     end
 
     return mean(auc_list), mean(mrr_list), mean(ndcg_list)

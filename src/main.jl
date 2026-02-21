@@ -73,15 +73,36 @@ end
 println("\nDone.")
 
 #evaluation
-println("\n=== Evaluating Hybrid (Accuracy) ===")
+println("\n=== Accuracy Evaluation (subset = 1000) ===\n")
 
-hybrid_auc, hybrid_mrr, hybrid_ndcg = evaluate_accuracy(
-    dev_behaviors,
-    (uid, cand, hist) -> score_hybrid(uid, cand, hist,
-                                       popularity, cf_rec, news_tfidf);
-    max_rows=1000
-)
+# helper scoring wrappers
+pop_fn = (uid, cand, hist) -> score_popularity(uid, cand, hist, popularity)
+cf_fn  = (uid, cand, hist) -> score_candidates_ucf(cf_rec, uid, cand, hist)
+cbf_fn = (uid, cand, hist) -> score_candidates_cbf(uid, cand, hist, news_tfidf)
+hyb_fn = (uid, cand, hist) -> score_hybrid(uid, cand, hist,
+                                            popularity, cf_rec, news_tfidf)
 
-println("Hybrid AUC  = ", hybrid_auc)
-println("Hybrid MRR  = ", hybrid_mrr)
-println("Hybrid nDCG = ", hybrid_ndcg)
+models = [
+    ("Popularity", pop_fn),
+    ("User-CF", cf_fn),
+    ("CBF", cbf_fn),
+    ("Hybrid", hyb_fn)
+]
+
+# ---- Table Header ----
+@printf("%-12s %-8s %-8s %-8s\n", "Model", "AUC", "MRR", "nDCG")
+println("------------------------------------------------")
+
+for (name, fn) in models
+    # println("\nEvaluating ", name)
+
+    auc_val, mrr_val, ndcg_val = evaluate_accuracy(
+        dev_behaviors,
+        fn;
+        max_rows=1000
+    )
+
+    # ---- Table Row ----
+    @printf("%-12s %.4f   %.4f   %.4f\n",
+            name, auc_val, mrr_val, ndcg_val)
+end
