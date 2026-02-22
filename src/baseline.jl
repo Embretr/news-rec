@@ -22,13 +22,15 @@ function compute_popularity(behaviors::DataFrame)::Dict{String,Int}
 end
 
 """Score candidates by global popularity (same score for all users)."""
-function score_popularity(candidates::Vector{String},
+function score_popularity(user_id::String, candidates::Vector{String},
+                          history::Vector{String},
                           popularity::Dict{String,Int})::Dict{String,Float64}
     return Dict(nid => Float64(get(popularity, nid, 0)) for nid in candidates)
 end
 
 
 """Assign random scores; useful as a quick sanity baseline."""
-function score_random(candidates::Vector{String})::Dict{String,Float64}
+function score_random(user_id::String, candidates::Vector{String},
+                      history::Vector{String})::Dict{String,Float64}
     return Dict(nid => rand() for nid in candidates)
 end
