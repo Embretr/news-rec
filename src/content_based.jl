@@ -1,5 +1,7 @@
 
+# Content-based recommendation with lightweight TF-IDF features.
 
+"""Lowercase, strip punctuation, and split free text into tokens."""
 function tokenize(text::Union{AbstractString,Missing})::Vector{String}
     ismissing(text) && return String[]
     cleaned = replace(lowercase(text), r"[^a-z0-9\s]" => " ")
@@ -7,6 +9,10 @@ function tokenize(text::Union{AbstractString,Missing})::Vector{String}
 end
 
 
+"""
+Build normalized TF-IDF vectors per news article from title, abstract, and category fields.
+Returns `news_id => term-weight map`.
+"""
 function build_tfidf(news::DataFrame;
                      max_features::Int=15_000)::Dict{String, Dict{String,Float64}}
     doc_tf = Dict{String, Dict{String,Int}}()
@@ -64,6 +70,7 @@ function build_tfidf(news::DataFrame;
 end
 
 
+"""Build a user profile by averaging TF-IDF vectors of clicked/read history items."""
 function build_user_content_profile(history::Vector{String},
                                     news_tfidf::Dict{String, Dict{String,Float64}})::Dict{String,Float64}
     profile = Dict{String,Float64}()
@@ -87,6 +94,7 @@ function build_user_content_profile(history::Vector{String},
 end
 
 
+"""Score candidate items by cosine-equivalent dot product with the user content profile."""
 function score_candidates_cbf(user_id::String, candidates::Vector{String},
                                history::Vector{String},
                                news_tfidf::Dict{String, Dict{String,Float64}})::Dict{String,Float64}

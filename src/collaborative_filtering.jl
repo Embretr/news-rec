@@ -1,17 +1,26 @@
 
+# User-based collaborative filtering implementation.
 
+# Stores sparse user-item interactions and inverse item-user index.
 struct UserCFRecommender
     user_items::Dict{String, Set{String}}
     item_users::Dict{String, Vector{String}}
     k_neighbors::Int
 end
 
+"""Construct a user-based CF recommender from behavior logs."""
 function UserCFRecommender(behaviors::DataFrame; k::Int=20)::UserCFRecommender
     user_items, item_users = build_user_item_data(behaviors)
     return UserCFRecommender(user_items, item_users, k)
 end
 
 
+"""
+Score candidates using cosine-like user overlap:
+1) find similar users via history overlap,
+2) keep top-k neighbors,
+3) aggregate weighted neighbor interactions.
+"""
 function score_candidates_ucf(rec::UserCFRecommender, user_id::String,
                                candidates::Vector{String},
                                history::Vector{String})::Dict{String,Float64}

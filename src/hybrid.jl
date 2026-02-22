@@ -1,5 +1,7 @@
 
+# Hybrid ranker combines popularity, user-CF, and content-based scores.
 
+"""Min-max normalize score dictionaries to [0, 1] for stable weighted fusion."""
 function _minmax_normalise(scores::Dict{String,Float64})::Dict{String,Float64}
     isempty(scores) && return scores
     lo = minimum(values(scores))
@@ -10,6 +12,12 @@ function _minmax_normalise(scores::Dict{String,Float64})::Dict{String,Float64}
 end
 
 
+"""
+Compute final hybrid scores by:
+1) generating component scores,
+2) normalizing each component,
+3) combining with user-configurable weights.
+"""
 function score_hybrid(user_id::String, candidates::Vector{String},
                       history::Vector{String},
                       popularity::Dict{String,Int},

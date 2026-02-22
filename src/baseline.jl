@@ -1,7 +1,9 @@
 
 using Random
 
+# Baseline rankers: popularity and random scoring.
 
+"""Aggregate click-like interactions into global news popularity counts."""
 function compute_popularity(behaviors::DataFrame)::Dict{String,Int}
     click_counts = Dict{String,Int}()
 
@@ -19,14 +21,14 @@ function compute_popularity(behaviors::DataFrame)::Dict{String,Int}
     return click_counts
 end
 
-function score_popularity(user_id::String, candidates::Vector{String},
-                          history::Vector{String},
+"""Score candidates by global popularity (same score for all users)."""
+function score_popularity(candidates::Vector{String},
                           popularity::Dict{String,Int})::Dict{String,Float64}
     return Dict(nid => Float64(get(popularity, nid, 0)) for nid in candidates)
 end
 
 
-function score_random(user_id::String, candidates::Vector{String},
-                      history::Vector{String})::Dict{String,Float64}
+"""Assign random scores; useful as a quick sanity baseline."""
+function score_random(candidates::Vector{String})::Dict{String,Float64}
     return Dict(nid => rand() for nid in candidates)
 end
