@@ -1,18 +1,6 @@
 
 # Content-based recommendation with lightweight TF-IDF features.
 
-"""Lowercase, strip punctuation, and split free text into tokens."""
-function tokenize(text::Union{AbstractString,Missing})::Vector{String}
-    ismissing(text) && return String[]
-    cleaned = replace(lowercase(text), r"[^a-z0-9\s]" => " ")
-    return filter(!isempty, String.(split(cleaned)))
-end
-
-
-"""
-Build normalized TF-IDF vectors per news article from title, abstract, and category fields.
-Returns `news_id => term-weight map`.
-"""
 function build_tfidf(news::DataFrame;
                      max_features::Int=15_000)::Dict{String, Dict{String,Float64}}
     doc_tf = Dict{String, Dict{String,Int}}()
