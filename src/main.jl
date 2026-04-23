@@ -12,6 +12,8 @@ include(joinpath(SRC, "baseline.jl"))
 include(joinpath(SRC, "collaborative_filtering.jl"))
 include(joinpath(SRC, "content_based.jl"))
 include(joinpath(SRC, "hybrid.jl"))
+include(joinpath(SRC, "metrics.jl"))
+include(joinpath(SRC, "analysis.jl"))
 
 # Deterministic behavior for reproducible random baseline outputs.
 Random.seed!(42)
@@ -21,58 +23,60 @@ const ROOT      = joinpath(@__DIR__, "..")
 const TRAIN_DIR = joinpath(ROOT, "MIND", "MINDsmall_train")
 const DEV_DIR   = joinpath(ROOT, "MIND", "MINDsmall_dev")
 
-println("=== Loading training data ===")
-train_news, train_behaviors = load_mind(TRAIN_DIR)
-println("  news rows      : ", nrow(train_news))
-println("  behavior rows  : ", nrow(train_behaviors))
+# ── Load data ─────────────────────────────────────────────────────────────────
+println("=== Loading and preprocessing data ===")
+train = preprocess_data(TRAIN_DIR)
+dev   = preprocess_data(DEV_DIR)
+println("  train: $(nrow(train.news)) articles, $(nrow(train.behaviors)) sessions")
+println("  dev  : $(nrow(dev.news))   articles, $(nrow(dev.behaviors))   sessions")
 
-println("\n=== Loading dev/validation data ===")
-dev_news, dev_behaviors = load_mind(DEV_DIR)
-println("  news rows      : ", nrow(dev_news))
-println("  behavior rows  : ", nrow(dev_behaviors))
+# ── Dataset analysis (Issue 1) ────────────────────────────────────────────────
+analyze_dataset("MINDsmall_train", train.news, train.behaviors)
+analyze_dataset("MINDsmall_dev",   dev.news,   dev.behaviors)
+print_dataset_weaknesses()
 
-println("\n=== Building models ===")
+# ── Build models ──────────────────────────────────────────────────────────────
+println("=== Building models ===")
 
 # 1) Global popularity model from training interactions.
 print("  [1/4] Computing popularity scores…  ")
-popularity = compute_popularity(train_behaviors)
+popularity = compute_popularity(train.behaviors)
 println("done  ($(length(popularity)) articles seen)")
 
 # 2) User-based collaborative filtering model.
 print("  [2/4] Building user-based CF model… ")
-cf_rec = UserCFRecommender(train_behaviors; k=20)
+cf_rec = UserCFRecommender(train.behaviors; k=20)
 println("done  ($(length(cf_rec.user_items)) users)")
 
 # 3) Content-based TF-IDF index over available news metadata.
 print("  [3/4] Building TF-IDF index…        ")
-all_news   = vcat(train_news, dev_news)
+all_news   = vcat(train.news, dev.news)
 news_tfidf = build_tfidf(unique(all_news, :NewsID))
 println("done  ($(length(news_tfidf)) articles indexed)")
 
 println("  [4/4] Hybrid model uses components above — no extra build step.")
 
-println("\n=== Demo: scoring the first dev session ===")
+# ── Evaluate all recommenders on dev set (Issues 6 & 7) ─────────────────────
+println("\n=== Evaluating on dev set (k=5) ===")
 
-# Prepare one validation session for side-by-side scoring demo.
-row        = first(dev_behaviors, 1)[1, :]
-candidates = [nid for (nid, _) in parse_impressions(row.Impressions)]
-history    = parse_history(row.History)
-user_id    = row.UserID
+n_catalog = length(dev.all_news_ids)
 
-println("User: $user_id  |  history length: $(length(history))  |  candidates: $(length(candidates))")
+scorers = [
+    ("Random",     (uid, cands, hist) -> score_random(uid, cands, hist)),
+    ("Popularity", (uid, cands, hist) -> score_popularity(uid, cands, hist, popularity)),
+    ("User-CF",    (uid, cands, hist) -> score_candidates_ucf(cf_rec, uid, cands, hist)),
+    ("CBF",        (uid, cands, hist) -> score_candidates_cbf(uid, cands, hist, news_tfidf)),
+    ("Hybrid",     (uid, cands, hist) -> score_hybrid(uid, cands, hist, popularity, cf_rec, news_tfidf)),
+]
 
-# Generate per-model candidate scores.
-pop_scores    = score_popularity(user_id, candidates, history, popularity)
-cf_scores     = score_candidates_ucf(cf_rec, user_id, candidates, history)
-cbf_scores    = score_candidates_cbf(user_id, candidates, history, news_tfidf)
-hybrid_scores = score_hybrid(user_id, candidates, history, popularity, cf_rec, news_tfidf)
-
-println("\nTop-5 candidates by each method:")
-# Rank and print top recommendations for each scoring strategy.
-for (name, scores) in [("Popularity", pop_scores), ("User-CF", cf_scores),
-                        ("CBF", cbf_scores),        ("Hybrid",  hybrid_scores)]
-    ranked = sort(candidates, by=nid -> get(scores, nid, 0.0), rev=true)
-    @printf("  %-12s %s\n", name, join(ranked[1:min(5, end)], "  "))
+results = EvalResult[]
+for (name, scorer) in scorers
+    print("  Evaluating $name…")
+    r = evaluate_recommender(name, scorer, dev.behaviors, popularity, news_tfidf, n_catalog; k=5)
+    push!(results, r)
+    println(" done  ($(r.n_sessions) sessions)")
 end
 
+println()
+print_eval_table(results)
 println("\nDone.")
