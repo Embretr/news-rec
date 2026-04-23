@@ -4,6 +4,24 @@ using DataFrames
 
 # Data loading utilities for MIND news recommendation splits.
 
+const STOPWORDS = Set([
+    "a","an","the","and","or","but","in","on","at","to","for","of","with",
+    "by","from","up","about","into","through","during","is","are","was","were",
+    "be","been","being","have","has","had","do","does","did","will","would",
+    "could","should","may","might","shall","can","need","dare","ought","used",
+    "it","its","this","that","these","those","i","me","my","we","our","you",
+    "your","he","him","his","she","her","they","them","their","what","which",
+    "who","whom","not","no","nor","so","yet","both","either","each","few",
+    "more","most","other","some","such","than","too","very","just","as","also",
+])
+
+function tokenize(text::Union{AbstractString,Missing})::Vector{String}
+    ismissing(text) && return String[]
+    cleaned = replace(lowercase(text), r"[^a-z0-9\s]" => " ")
+    return filter(t -> !isempty(t) && t ∉ STOPWORDS, String.(split(cleaned)))
+end
+
+
 """Load and sanitize `news.tsv` into a typed DataFrame with named columns."""
 function load_news(path::String)::DataFrame
     news = CSV.read(path, DataFrame;
@@ -104,4 +122,27 @@ function load_mind(split_dir::String)
     news      = load_news(joinpath(split_dir, "news.tsv"))
     behaviors = load_behaviors(joinpath(split_dir, "behaviors.tsv"))
     return news, behaviors
+end
+
+
+struct MINDData
+    news::DataFrame
+    behaviors::DataFrame
+    user_items::Dict{String,Set{String}}
+    item_users::Dict{String,Vector{String}}
+    all_news_ids::Set{String}
+end
+
+# Full preprocessing pipeline: load → clean → index user/item interactions.
+function preprocess_data(split_dir::String)::MINDData
+    news      = load_news(joinpath(split_dir, "news.tsv"))
+    behaviors = load_behaviors(joinpath(split_dir, "behaviors.tsv"))
+
+    # deduplicate news (same article can appear in multiple splits)
+    unique!(news, :NewsID)
+
+    user_items, item_users = build_user_item_data(behaviors)
+    all_news_ids = Set(news.NewsID)
+
+    return MINDData(news, behaviors, user_items, item_users, all_news_ids)
 end
